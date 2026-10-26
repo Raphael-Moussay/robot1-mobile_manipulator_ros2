@@ -1,0 +1,250 @@
+<?xml version="1.0" ?>
+<sdf version="1.9" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <world name="cleaner_arena">
+    <!-- ========================================== -->
+    <!-- GLOBAL PARAMETERS & DIMENSIONS (VARIABLES) -->
+    <!-- ========================================== -->
+    <!-- Perimeter Wall Dimensions (meters) -->
+    <xacro:property name="wall_height" value="0.01" />
+    <xacro:property name="wall_thickness" value="0.03" />
+
+    <!-- Arena Playing Surface Dimensions (meters) -->
+    <xacro:property name="arena_x_size" value="1.40" />
+    <xacro:property name="arena_y_size" value="1.00" />
+    <xacro:property name="field_thickness" value="0.01" />
+
+    <!-- Calculated Geometry -->
+    <xacro:property name="wall_z_center" value="${wall_height / 2.0}" />
+    <xacro:property name="wall_ns_length" value="${arena_x_size + 2.0 * wall_thickness}" />
+    <xacro:property name="wall_ew_length" value="${arena_y_size}" />
+    <xacro:property name="wall_north_y" value="${arena_y_size / 2.0 + wall_thickness / 2.0}" />
+    <xacro:property name="wall_south_y" value="${-(arena_y_size / 2.0 + wall_thickness / 2.0)}" />
+    <xacro:property name="wall_east_x" value="${arena_x_size / 2.0 + wall_thickness / 2.0}" />
+    <xacro:property name="wall_west_x" value="${-(arena_x_size / 2.0 + wall_thickness / 2.0)}" />
+
+    <!-- Simulation Physics Configuration -->
+    <physics type="ode">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
+    </physics>
+
+    <!-- Essential Gazebo Sim Systems / Plugins -->
+    <plugin
+      filename="gz-sim-physics-system"
+      name="gz::sim::systems::Physics">
+    </plugin>
+    <plugin
+      filename="gz-sim-user-commands-system"
+      name="gz::sim::systems::UserCommands">
+    </plugin>
+    <plugin
+      filename="gz-sim-scene-broadcaster-system"
+      name="gz::sim::systems::SceneBroadcaster">
+    </plugin>
+
+    <!-- Gravity & Atmosphere -->
+    <gravity>0 0 -9.80665</gravity>
+
+    <!-- Sun Light Source -->
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <!-- Ground Plane -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>100</mu>
+                <mu2>50</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.7 0.7 0.7 1</ambient>
+            <diffuse>0.7 0.7 0.7 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Arena Model: 1.40m x 1.00m Playing Surface + Perimeter Walls -->
+    <model name="competition_arena">
+      <static>true</static>
+      <pose>0 0 0 0 0 0</pose>
+
+      <!-- White Playing Surface -->
+      <link name="playing_field">
+        <pose>0 0 ${field_thickness / 2.0} 0 0 0</pose>
+        <collision name="field_collision">
+          <geometry>
+            <box>
+              <size>${arena_x_size} ${arena_y_size} ${field_thickness}</size>
+            </box>
+          </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>1.0</mu>
+                <mu2>1.0</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+        <visual name="field_visual">
+          <geometry>
+            <box>
+              <size>${arena_x_size} ${arena_y_size} ${field_thickness}</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.95 0.95 0.95 1.0</ambient>
+            <diffuse>0.95 0.95 0.95 1.0</diffuse>
+            <specular>0.1 0.1 0.1 1.0</specular>
+          </material>
+        </visual>
+      </link>
+
+      <!-- North Wall (Black) -->
+      <link name="wall_north">
+        <pose>0.0 ${wall_north_y} ${wall_z_center} 0 0 0</pose>
+        <collision name="wall_north_collision">
+          <geometry>
+            <box>
+              <size>${wall_ns_length} ${wall_thickness} ${wall_height}</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="wall_north_visual">
+          <geometry>
+            <box>
+              <size>${wall_ns_length} ${wall_thickness} ${wall_height}</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.05 0.05 0.05 1.0</ambient>
+            <diffuse>0.1 0.1 0.1 1.0</diffuse>
+            <specular>0.01 0.01 0.01 1.0</specular>
+          </material>
+        </visual>
+      </link>
+
+      <!-- South Wall (Black) -->
+      <link name="wall_south">
+        <pose>0.0 ${wall_south_y} ${wall_z_center} 0 0 0</pose>
+        <collision name="wall_south_collision">
+          <geometry>
+            <box>
+              <size>${wall_ns_length} ${wall_thickness} ${wall_height}</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="wall_south_visual">
+          <geometry>
+            <box>
+              <size>${wall_ns_length} ${wall_thickness} ${wall_height}</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.05 0.05 0.05 1.0</ambient>
+            <diffuse>0.1 0.1 0.1 1.0</diffuse>
+            <specular>0.01 0.01 0.01 1.0</specular>
+          </material>
+        </visual>
+      </link>
+
+      <!-- East Wall (Black) -->
+      <link name="wall_east">
+        <pose>${wall_east_x} 0.0 ${wall_z_center} 0 0 0</pose>
+        <collision name="wall_east_collision">
+          <geometry>
+            <box>
+              <size>${wall_thickness} ${wall_ew_length} ${wall_height}</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="wall_east_visual">
+          <geometry>
+            <box>
+              <size>${wall_thickness} ${wall_ew_length} ${wall_height}</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.05 0.05 0.05 1.0</ambient>
+            <diffuse>0.1 0.1 0.1 1.0</diffuse>
+            <specular>0.01 0.01 0.01 1.0</specular>
+          </material>
+        </visual>
+      </link>
+
+      <!-- West Wall (Black) -->
+      <link name="wall_west">
+        <pose>${wall_west_x} 0.0 ${wall_z_center} 0 0 0</pose>
+        <collision name="wall_west_collision">
+          <geometry>
+            <box>
+              <size>${wall_thickness} ${wall_ew_length} ${wall_height}</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="wall_west_visual">
+          <geometry>
+            <box>
+              <size>${wall_thickness} ${wall_ew_length} ${wall_height}</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.05 0.05 0.05 1.0</ambient>
+            <diffuse>0.1 0.1 0.1 1.0</diffuse>
+            <specular>0.01 0.01 0.01 1.0</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Red Target Zone Floor Arc (Option 1 Rules: Radius 30cm from top-right corner) -->
+    <include>
+      <uri>model://target_zone_arc</uri>
+      <name>target_zone_arc</name>
+      <pose>0.70 0.50 0.01 0 0 0</pose>
+    </include>
+
+    <!-- Target Collection Box (Exported Onshape CAD Mesh) -->
+    <!-- Located at top-right corner (X=+0.50m, Y=+0.30m), rotated 45 deg facing arena center -->
+    <include>
+      <uri>model://target_box</uri>
+      <name>target_box</name>
+      <pose>0.70 0.50 0.01 0 0 -2.356194</pose>
+    </include>
+  </world>
+</sdf>
+

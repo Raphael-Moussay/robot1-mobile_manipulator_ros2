@@ -1,0 +1,21 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <model name="target_zone_arc">
+    <static>true</static>
+    <link name="target_zone_arc_link">
+      <visual name="target_zone_arc_visual">
+        <geometry>
+          <mesh>
+            <uri>model://target_zone_arc/meshes/target_zone_arc.obj</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.9 0.05 0.05 1.0</ambient>
+          <diffuse>0.95 0.05 0.05 1.0</diffuse>
+          <specular>0.1 0.1 0.1 1.0</specular>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>
+

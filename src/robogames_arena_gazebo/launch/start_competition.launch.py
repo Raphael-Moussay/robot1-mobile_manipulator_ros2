@@ -18,6 +18,7 @@ from launch_ros.actions import Node
 # Package and File Constants
 PACKAGE_NAME: str = "robogames_arena_gazebo"
 WORLD_FILE_NAME: str = "cleaner_arena.sdf"
+WORLD_XACRO_NAME: str = "cleaner_arena.sdf.xacro"
 MODEL_RELATIVE_PATH: str = os.path.join("models", "duplo_brick", "model.sdf")
 
 # Spawning Constants
@@ -45,9 +46,12 @@ SPAWN_Y_MAX: float = ARENA_Y_MAX - WALL_SAFETY_MARGIN  # +0.40 m
 ROBOT_EXCLUSION_X_MAX: float = -0.35
 ROBOT_EXCLUSION_Y_MAX: float = -0.15
 
-# Exclusion Zone 2: Target Collection Box Area (Top-Right Corner)
-TARGET_BOX_EXCLUSION_X_MIN: float = 0.25
-TARGET_BOX_EXCLUSION_Y_MIN: float = 0.05
+# Exclusion Zone 2: Target Zone (Top-Right Corner: X=+0.70m, Y=+0.50m)
+# Official target zone radius: 0.30 m (Option 1 arc)
+# Duplo spawning exclusion radius: 0.35 m (includes 5 cm safety clearance)
+TARGET_CORNER_X: float = ARENA_X_MAX  # 0.70 m
+TARGET_CORNER_Y: float = ARENA_Y_MAX  # 0.50 m
+TARGET_EXCLUSION_RADIUS: float = 0.35  # 0.35 m exclusion arc from top-right corner
 
 # Sampling Loop Limit
 MAX_SAMPLING_ATTEMPTS: int = 2000
@@ -66,17 +70,20 @@ def is_in_robot_exclusion_zone(x_coord: float, y_coord: float) -> bool:
     return x_coord < ROBOT_EXCLUSION_X_MAX and y_coord < ROBOT_EXCLUSION_Y_MAX
 
 
-def is_in_target_box_exclusion_zone(x_coord: float, y_coord: float) -> bool:
-    """Check if the given coordinate lies inside the target collection box area.
+def is_in_target_zone_exclusion(x_coord: float, y_coord: float) -> bool:
+    """Check if the given coordinate lies inside the 35cm target zone exclusion arc.
 
     Args:
         x_coord: The X position coordinate in meters.
         y_coord: The Y position coordinate in meters.
 
     Returns:
-        True if the point lies inside the target box exclusion zone, False otherwise.
+        True if the Euclidean distance from the top-right corner is <= TARGET_EXCLUSION_RADIUS.
     """
-    return x_coord > TARGET_BOX_EXCLUSION_X_MIN and y_coord > TARGET_BOX_EXCLUSION_Y_MIN
+    distance_to_corner: float = math.hypot(
+        x_coord - TARGET_CORNER_X, y_coord - TARGET_CORNER_Y
+    )
+    return distance_to_corner <= TARGET_EXCLUSION_RADIUS
 
 
 def is_valid_brick_position(
@@ -97,7 +104,7 @@ def is_valid_brick_position(
     if is_in_robot_exclusion_zone(x_coord, y_coord):
         return False
 
-    if is_in_target_box_exclusion_zone(x_coord, y_coord):
+    if is_in_target_zone_exclusion(x_coord, y_coord):
         return False
 
     for prior_x, prior_y in existing_positions:
@@ -145,6 +152,35 @@ def generate_random_brick_poses(
     return poses
 
 
+def compile_xacro_to_sdf(xacro_file_path: str, output_sdf_path: str) -> None:
+    """Compile a Xacro world template into a standard SDFormat file on launch.
+
+    Args:
+        xacro_file_path: Absolute path to the source .sdf.xacro template.
+        output_sdf_path: Absolute destination path for the generated .sdf file.
+    """
+    if not os.path.exists(xacro_file_path):
+        return
+
+    try:
+        import xacro  # type: ignore
+
+        doc = xacro.process_file(xacro_file_path)
+        with open(output_sdf_path, "w", encoding="utf-8") as file_handle:
+            file_handle.write(doc.toprettyxml(indent="  "))
+    except Exception:
+        import subprocess
+
+        try:
+            subprocess.run(
+                ["xacro", xacro_file_path, "-o", output_sdf_path],
+                check=True,
+                capture_output=True,
+            )
+        except Exception:
+            pass
+
+
 def generate_launch_description() -> LaunchDescription:
     """Generate the launch description for the cleaner arena simulation.
 
@@ -156,15 +192,26 @@ def generate_launch_description() -> LaunchDescription:
     world_file_path: str = os.path.join(
         package_share_directory, "worlds", WORLD_FILE_NAME
     )
+    xacro_file_path: str = os.path.join(
+        package_share_directory, "worlds", WORLD_XACRO_NAME
+    )
+    # Automatically compile cleaner_arena.sdf from cleaner_arena.sdf.xacro if present
+    compile_xacro_to_sdf(xacro_file_path, world_file_path)
+
     models_directory_path: str = os.path.join(package_share_directory, "models")
     brick_model_file_path: str = os.path.join(
         package_share_directory, MODEL_RELATIVE_PATH
     )
 
     # 1. Resource path environment variable configuration for Gazebo Sim
-    gz_resource_env = AppendEnvironmentVariable(
+    gz_resource_env_models = AppendEnvironmentVariable(
         name="GZ_SIM_RESOURCE_PATH",
         value=models_directory_path,
+    )
+    parent_share_directory: str = os.path.dirname(package_share_directory)
+    gz_resource_env_share = AppendEnvironmentVariable(
+        name="GZ_SIM_RESOURCE_PATH",
+        value=parent_share_directory,
     )
 
     # 2. Gazebo Sim launch description (started in running state '-r')
@@ -208,7 +255,7 @@ def generate_launch_description() -> LaunchDescription:
         spawner_nodes.append(spawner_node)
 
     # Assemble launch actions
-    launch_actions = [gz_resource_env, gazebo_sim]
+    launch_actions = [gz_resource_env_models, gz_resource_env_share, gazebo_sim]
     launch_actions.extend(spawner_nodes)
 
     return LaunchDescription(launch_actions)

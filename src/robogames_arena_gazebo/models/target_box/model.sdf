@@ -1,0 +1,152 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <model name="target_box">
+    <static>true</static>
+    <link name="target_box_link">
+      <pose>0 0 0 0 0 0</pose>
+
+      <!-- ======================================================== -->
+      <!-- COMPOSITE SOLID PRIMITIVE COLLISIONS (LEAK-PROOF & FAST)  -->
+      <!-- ======================================================== -->
+
+      <!-- 1. Solid Base Floor Plate (141.4mm x 141.4mm x 10mm) -->
+      <collision name="base_collision">
+        <pose>0.0 0.0 0.0050 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.1414 0.1414 0.0100</size>
+          </box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>1.0</mu>
+              <mu2>1.0</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>1000000.0</kp>
+              <kd>1.0</kd>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+
+      <!-- 2. Rear Tall Backboard (300mm high, 5mm thick) -->
+      <collision name="backboard_collision">
+        <pose>-0.0682 0.0 0.1550 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.0050 0.1414 0.2900</size>
+          </box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>1.0</mu>
+              <mu2>1.0</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>1000000.0</kp>
+              <kd>1.0</kd>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+
+      <!-- 3. Front Wall towards center (100mm high, 5mm thick) -->
+      <collision name="front_wall_collision">
+        <pose>0.0682 0.0 0.0550 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.0050 0.1414 0.0900</size>
+          </box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>1.0</mu>
+              <mu2>1.0</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>1000000.0</kp>
+              <kd>1.0</kd>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+
+      <!-- 4. Left Side Wall (100mm high, 5mm thick) -->
+      <collision name="left_wall_collision">
+        <pose>0.0 0.0682 0.0550 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.1314 0.0050 0.0900</size>
+          </box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>1.0</mu>
+              <mu2>1.0</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>1000000.0</kp>
+              <kd>1.0</kd>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+
+      <!-- 5. Right Side Wall (100mm high, 5mm thick) -->
+      <collision name="right_wall_collision">
+        <pose>0.0 -0.0682 0.0550 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.1314 0.0050 0.0900</size>
+          </box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>1.0</mu>
+              <mu2>1.0</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>1000000.0</kp>
+              <kd>1.0</kd>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+
+      <!-- ======================================================== -->
+      <!-- DETAILED VISUAL RENDERING (ONSHAPE CAD MESH & MATERIAL)  -->
+      <!-- ======================================================== -->
+      <visual name="target_box_visual">
+        <!-- Rotated -90 degrees around X to map Onshape export axes to ROS Z-up -->
+        <pose>0 0 0 -1.570796 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://target_box/meshes/Box.obj</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.6157 0.8118 0.9294 1.0</ambient>
+          <diffuse>0.6157 0.8118 0.9294 1.0</diffuse>
+          <specular>0.2 0.2 0.2 1.0</specular>
+        </material>
+      </visual>
+
+    </link>
+  </model>
+</sdf>

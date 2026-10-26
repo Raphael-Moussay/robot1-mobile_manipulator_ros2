@@ -39,9 +39,15 @@ src/robogames_arena_gazebo/
 ├── launch/
 │   └── start_competition.launch.py   # Spawns world in Gazebo Sim & 6 randomized bricks
 ├── models/
-│   └── duplo_brick/
-│       ├── model.config               # Gazebo model configuration
-│       └── model.sdf                  # Dynamic brick SDF (15g, exact inertia tensor, friction)
+│   ├── duplo_brick/
+│   │   ├── model.config               # Gazebo model configuration
+│   │   └── model.sdf                  # Dynamic brick SDF (15g, exact inertia tensor, friction)
+│   └── target_box/
+│       ├── meshes/
+│       │   ├── Box.mtl                # Material definition exported from Onshape
+│       │   └── Box.obj                # CAD 3D mesh exported from Onshape
+│       ├── model.config               # Gazebo target box model configuration
+│       └── model.sdf                  # Target box SDF with visual & collision mesh
 ├── resource/
 │   └── robogames_arena_gazebo         # ament_python resource index marker
 ├── robogames_arena_gazebo/
@@ -138,3 +144,4 @@ As outlined in [`plan.md`](plan.md):
 - **Phase 2 (Sessions 4 to 6)**: 2D SLAM mapping using `slam_toolbox`.
 - **Phase 3 (Sessions 7 to 9)**: Nav2 stack integration (costmaps, AMCL, waypoints).
 - **Phase 4 (Sessions 10 to 11)**: Arm manipulation and full competition mission execution.
+

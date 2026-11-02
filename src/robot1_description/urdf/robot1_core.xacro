@@ -1,0 +1,187 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- ====================================================================== -->
+  <!-- Robot 1 Physical & Kinematic Configuration Constants (Meters / Kg)     -->
+  <!-- ====================================================================== -->
+
+  <!-- Ground clearance under the upside-down Hokuyo cap (as low as possible) -->
+  <xacro:property name="LIDAR_GROUND_CLEARANCE" value="0.002" />
+
+  <!-- Rectangular Cuboid Body ("pave droit") Dimensions -->
+  <xacro:property name="CHASSIS_LENGTH" value="0.250" />
+  <xacro:property name="CHASSIS_WIDTH" value="0.160" />
+  <xacro:property name="CHASSIS_HEIGHT" value="0.050" />
+  <xacro:property name="CHASSIS_MASS" value="2.000" />
+
+  <!-- Chassis sits right above the 70mm upside-down Hokuyo URG-04LX -->
+  <xacro:property
+    name="CHASSIS_GROUND_CLEARANCE"
+    value="${HOKUYO_URG04LX_HEIGHT + LIDAR_GROUND_CLEARANCE}" />
+
+  <!-- 4-Wheel Skid-Steer Drive Geometry -->
+  <xacro:property name="WHEEL_RADIUS" value="0.045" />
+  <xacro:property name="WHEEL_WIDTH" value="0.022" />
+  <xacro:property name="WHEEL_MASS" value="0.150" />
+  <xacro:property name="WHEEL_LATERAL_GAP" value="0.003" />
+
+  <xacro:property
+    name="WHEEL_Y_OFFSET"
+    value="${CHASSIS_WIDTH / 2.0 + WHEEL_LATERAL_GAP + WHEEL_WIDTH / 2.0}" />
+  <xacro:property name="WHEEL_SEPARATION" value="${2.0 * WHEEL_Y_OFFSET}" />
+
+  <!-- Axle X positions shifted slightly aft to clear front 217 deg LiDAR FOV -->
+  <xacro:property name="FRONT_AXLE_X" value="0.035" />
+  <xacro:property name="REAR_AXLE_X" value="-0.090" />
+
+  <!-- Center of mass aligned with midpoint between front and rear axles -->
+  <xacro:property
+    name="CHASSIS_COM_X_OFFSET"
+    value="${(FRONT_AXLE_X + REAR_AXLE_X) / 2.0}" />
+
+  <!-- Axle Mount Bracket Dimensions (connecting chassis underside to axles) -->
+  <xacro:property name="MOUNT_LENGTH" value="0.026" />
+  <xacro:property name="MOUNT_WIDTH" value="0.012" />
+  <xacro:property name="MOUNT_AXLE_EXTENSION" value="0.008" />
+  <xacro:property name="MOUNT_CHASSIS_OVERLAP" value="0.004" />
+  <xacro:property
+    name="MOUNT_HEIGHT"
+    value="${CHASSIS_GROUND_CLEARANCE - WHEEL_RADIUS + MOUNT_AXLE_EXTENSION}" />
+
+  <!-- Hokuyo X position flush under the front edge of the rectangular body -->
+  <xacro:property name="LIDAR_FRONT_INSET" value="0.002" />
+  <xacro:property
+    name="LIDAR_X_OFFSET"
+    value="${CHASSIS_LENGTH / 2.0 - HOKUYO_URG04LX_DEPTH / 2.0 - LIDAR_FRONT_INSET}" />
+
+  <!-- Wheel Contact Physics Parameters -->
+  <xacro:property name="WHEEL_FRICTION_MU1" value="0.85" />
+  <xacro:property name="WHEEL_FRICTION_MU2" value="0.35" />
+  <xacro:property name="WHEEL_CONTACT_KP" value="1000000.0" />
+  <xacro:property name="WHEEL_CONTACT_KD" value="100.0" />
+
+  <!-- ====================================================================== -->
+  <!-- Base Frames (REP-105 Compliant: base_footprint on floor -> base_link)  -->
+  <!-- ====================================================================== -->
+  <link name="base_footprint" />
+
+  <joint name="base_footprint_joint" type="fixed">
+    <parent link="base_footprint" />
+    <child link="base_link" />
+    <origin xyz="0.0 0.0 ${WHEEL_RADIUS}" rpy="0.0 0.0 0.0" />
+  </joint>
+
+  <link name="base_link" />
+
+  <!-- ====================================================================== -->
+  <!-- Rectangular Cuboid Body ("Pave Droit")                                 -->
+  <!-- ====================================================================== -->
+  <xacro:property
+    name="CHASSIS_CENTER_Z_FROM_BASE"
+    value="${CHASSIS_GROUND_CLEARANCE + CHASSIS_HEIGHT / 2.0 - WHEEL_RADIUS}" />
+
+  <!-- Subtle axle support bracket visual macro -->
+  <xacro:macro name="axle_bracket_visual" params="suffix x_pos y_sign">
+    <visual name="axle_bracket_${suffix}_visual">
+      <origin
+        xyz="${x_pos} ${y_sign * (CHASSIS_WIDTH / 2.0 - MOUNT_WIDTH / 2.0)} ${-(CHASSIS_HEIGHT / 2.0 + MOUNT_HEIGHT / 2.0 - MOUNT_CHASSIS_OVERLAP)}"
+        rpy="0.0 0.0 0.0" />
+      <geometry>
+        <box size="${MOUNT_LENGTH} ${MOUNT_WIDTH} ${MOUNT_HEIGHT}" />
+      </geometry>
+      <material name="mount_aluminium_grey" />
+    </visual>
+  </xacro:macro>
+
+  <joint name="chassis_joint" type="fixed">
+    <parent link="base_link" />
+    <child link="chassis_link" />
+    <origin xyz="0.0 0.0 ${CHASSIS_CENTER_Z_FROM_BASE}" rpy="0.0 0.0 0.0" />
+  </joint>
+
+  <link name="chassis_link">
+    <visual name="chassis_box_visual">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+      <geometry>
+        <box size="${CHASSIS_LENGTH} ${CHASSIS_WIDTH} ${CHASSIS_HEIGHT}" />
+      </geometry>
+      <material name="chassis_royal_blue" />
+    </visual>
+
+    <xacro:axle_bracket_visual suffix="fl" x_pos="${FRONT_AXLE_X}" y_sign="${1.0}" />
+    <xacro:axle_bracket_visual suffix="fr" x_pos="${FRONT_AXLE_X}" y_sign="${-1.0}" />
+    <xacro:axle_bracket_visual suffix="rl" x_pos="${REAR_AXLE_X}" y_sign="${1.0}" />
+    <xacro:axle_bracket_visual suffix="rr" x_pos="${REAR_AXLE_X}" y_sign="${-1.0}" />
+
+    <collision name="chassis_box_collision">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+      <geometry>
+        <box size="${CHASSIS_LENGTH} ${CHASSIS_WIDTH} ${CHASSIS_HEIGHT}" />
+      </geometry>
+    </collision>
+
+    <xacro:inertial_box
+      mass="${CHASSIS_MASS}"
+      x="${CHASSIS_LENGTH}"
+      y="${CHASSIS_WIDTH}"
+      z="${CHASSIS_HEIGHT}">
+      <origin xyz="${CHASSIS_COM_X_OFFSET} 0.0 0.0" rpy="0.0 0.0 0.0" />
+    </xacro:inertial_box>
+  </link>
+
+  <!-- ====================================================================== -->
+  <!-- Reusable Wheel Macro (Instantiated for All 4 Wheels)                   -->
+  <!-- ====================================================================== -->
+  <xacro:macro name="drive_wheel" params="prefix x_offset y_offset">
+    <joint name="${prefix}_wheel_joint" type="continuous">
+      <parent link="base_link" />
+      <child link="${prefix}_wheel_link" />
+      <origin xyz="${x_offset} ${y_offset} 0.0" rpy="${-pi / 2.0} 0.0 0.0" />
+      <axis xyz="0.0 0.0 1.0" />
+    </joint>
+
+    <link name="${prefix}_wheel_link">
+      <visual name="${prefix}_wheel_visual">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+        <geometry>
+          <cylinder radius="${WHEEL_RADIUS}" length="${WHEEL_WIDTH}" />
+        </geometry>
+        <material name="wheel_rubber_dark" />
+      </visual>
+
+      <!-- Spherical collision eliminates cylinder rim edge-catching during skid-steer turns -->
+      <collision name="${prefix}_wheel_collision">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+        <geometry>
+          <sphere radius="${WHEEL_RADIUS}" />
+        </geometry>
+      </collision>
+
+      <xacro:inertial_cylinder
+        mass="${WHEEL_MASS}"
+        length="${WHEEL_WIDTH}"
+        radius="${WHEEL_RADIUS}">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+      </xacro:inertial_cylinder>
+    </link>
+
+    <gazebo reference="${prefix}_wheel_link">
+      <mu1>${WHEEL_FRICTION_MU1}</mu1>
+      <mu2>${WHEEL_FRICTION_MU2}</mu2>
+      <kp>${WHEEL_CONTACT_KP}</kp>
+      <kd>${WHEEL_CONTACT_KD}</kd>
+      <visual>
+        <material>
+          <ambient>0.12 0.12 0.14 1.0</ambient>
+          <diffuse>0.16 0.16 0.18 1.0</diffuse>
+          <specular>0.10 0.10 0.10 1.0</specular>
+        </material>
+      </visual>
+    </gazebo>
+  </xacro:macro>
+
+  <!-- Instantiate the 4 Drive Wheels -->
+  <xacro:drive_wheel prefix="front_left" x_offset="${FRONT_AXLE_X}" y_offset="${WHEEL_Y_OFFSET}" />
+  <xacro:drive_wheel prefix="front_right" x_offset="${FRONT_AXLE_X}" y_offset="${-WHEEL_Y_OFFSET}" />
+  <xacro:drive_wheel prefix="rear_left" x_offset="${REAR_AXLE_X}" y_offset="${WHEEL_Y_OFFSET}" />
+  <xacro:drive_wheel prefix="rear_right" x_offset="${REAR_AXLE_X}" y_offset="${-WHEEL_Y_OFFSET}" />
+</robot>

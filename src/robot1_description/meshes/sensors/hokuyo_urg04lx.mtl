@@ -1,0 +1,21 @@
+# Hokuyo URG-04LX Material Library
+newmtl hokuyo_body_grey
+Ka 0.18 0.19 0.21
+Kd 0.20 0.21 0.24
+Ks 0.25 0.25 0.25
+d 1.0
+Ns 30.0
+
+newmtl hokuyo_optical_window
+Ka 0.03 0.03 0.04
+Kd 0.04 0.04 0.06
+Ks 0.70 0.70 0.75
+d 1.0
+Ns 90.0
+
+newmtl hokuyo_orange
+Ka 0.85 0.35 0.05
+Kd 0.94 0.40 0.06
+Ks 0.30 0.30 0.30
+d 1.0
+Ns 40.0

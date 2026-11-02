@@ -33,7 +33,7 @@ ARENA_Y_MIN: float = -0.50
 ARENA_Y_MAX: float = 0.50
 
 # Safety Clearance Margins (meters)
-WALL_SAFETY_MARGIN: float = 0.10
+WALL_SAFETY_MARGIN: float = 0.02
 MIN_INTER_BRICK_DISTANCE: float = 0.10
 
 # Valid Spawning Area Bounds (after wall margin clearance)
@@ -163,7 +163,7 @@ def compile_xacro_to_sdf(xacro_file_path: str, output_sdf_path: str) -> None:
         return
 
     try:
-        import xacro  # type: ignore
+        import xacro
 
         doc = xacro.process_file(xacro_file_path)
         with open(output_sdf_path, "w", encoding="utf-8") as file_handle:

@@ -1,0 +1,120 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- ====================================================================== -->
+  <!-- Official Hokuyo URG-04LX Datasheet Constants (Drawing No. C-40-3362)   -->
+  <!-- ====================================================================== -->
+  <xacro:property name="HOKUYO_URG04LX_WIDTH" value="0.050" />
+  <xacro:property name="HOKUYO_URG04LX_DEPTH" value="0.050" />
+  <xacro:property name="HOKUYO_URG04LX_HEIGHT" value="0.070" />
+  <xacro:property name="HOKUYO_URG04LX_COLLISION_TIP_MARGIN" value="0.004" />
+  <xacro:property
+    name="HOKUYO_URG04LX_COLLISION_HEIGHT"
+    value="${HOKUYO_URG04LX_HEIGHT - HOKUYO_URG04LX_COLLISION_TIP_MARGIN}" />
+  <xacro:property name="HOKUYO_URG04LX_MASS" value="0.160" />
+
+  <!-- Optical scanning plane is 55 mm from mounting base (15 mm from top cap) -->
+  <xacro:property name="HOKUYO_URG04LX_OPTICAL_Z_OFFSET" value="0.055" />
+
+  <!-- Optical & Laser Rangefinder Parameters: 240 deg FOV, 0.3515625 deg step -->
+  <xacro:property name="HOKUYO_URG04LX_FOV_MIN_RAD" value="-2.094395" />
+  <xacro:property name="HOKUYO_URG04LX_FOV_MAX_RAD" value="2.094395" />
+  <xacro:property name="HOKUYO_URG04LX_SAMPLE_COUNT" value="683" />
+  <xacro:property name="HOKUYO_URG04LX_ANGULAR_RESOLUTION" value="1" />
+  <xacro:property name="HOKUYO_URG04LX_RANGE_MIN" value="0.050" />
+  <xacro:property name="HOKUYO_URG04LX_RANGE_MAX" value="4.000" />
+  <xacro:property name="HOKUYO_URG04LX_RANGE_RESOLUTION" value="0.001" />
+  <xacro:property name="HOKUYO_URG04LX_NOISE_MEAN" value="0.0" />
+  <xacro:property name="HOKUYO_URG04LX_NOISE_STDDEV" value="0.003" />
+  <xacro:property name="HOKUYO_URG04LX_DEFAULT_RATE_HZ" value="10" />
+
+  <!-- ====================================================================== -->
+  <!-- Reusable Hokuyo URG-04LX 2D LiDAR Xacro Macro                          -->
+  <!-- ====================================================================== -->
+  <xacro:macro
+    name="hokuyo_urg04lx"
+    params="prefix:=hokuyo parent *origin inverted:=true topic:=/scan update_rate:=${HOKUYO_URG04LX_DEFAULT_RATE_HZ} visualize:=true">
+
+    <!-- Mounting Joint attaching Hokuyo base plate (local Z=0) to parent link -->
+    <joint name="${prefix}_base_joint" type="fixed">
+      <parent link="${parent}" />
+      <child link="${prefix}_base_link" />
+      <xacro:insert_block name="origin" />
+    </joint>
+
+    <!-- Physical Sensor Housing Link -->
+    <link name="${prefix}_base_link">
+      <visual name="${prefix}_housing_visual">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+        <geometry>
+          <mesh filename="package://robot1_description/meshes/sensors/hokuyo_urg04lx.obj" />
+        </geometry>
+      </visual>
+
+      <collision name="${prefix}_housing_collision">
+        <origin
+          xyz="0.0 0.0 ${HOKUYO_URG04LX_COLLISION_HEIGHT / 2.0}"
+          rpy="0.0 0.0 0.0" />
+        <geometry>
+          <box
+            size="${HOKUYO_URG04LX_DEPTH} ${HOKUYO_URG04LX_WIDTH} ${HOKUYO_URG04LX_COLLISION_HEIGHT}" />
+        </geometry>
+      </collision>
+
+      <xacro:inertial_box
+        mass="${HOKUYO_URG04LX_MASS}"
+        x="${HOKUYO_URG04LX_DEPTH}"
+        y="${HOKUYO_URG04LX_WIDTH}"
+        z="${HOKUYO_URG04LX_HEIGHT}">
+        <origin xyz="0.0 0.0 ${HOKUYO_URG04LX_HEIGHT / 2.0}" rpy="0.0 0.0 0.0" />
+      </xacro:inertial_box>
+    </link>
+
+    <!-- Optical Scanning Frame (kept REP-103 Z-up even when casing is mounted upside-down) -->
+    <xacro:property
+      name="optical_roll_compensation"
+      value="${-pi if inverted in [True, 'true', 'True', 1, '1'] else 0.0}" />
+
+    <joint name="${prefix}_laser_joint" type="fixed">
+      <parent link="${prefix}_base_link" />
+      <child link="${prefix}_laser_frame" />
+      <origin
+        xyz="0.0 0.0 ${HOKUYO_URG04LX_OPTICAL_Z_OFFSET}"
+        rpy="${optical_roll_compensation} 0.0 0.0" />
+    </joint>
+
+    <link name="${prefix}_laser_frame" />
+
+    <!-- Gazebo Harmonic GPU LiDAR Sensor Definition -->
+    <gazebo reference="${prefix}_laser_frame">
+      <sensor name="${prefix}_urg04lx_sensor" type="gpu_lidar">
+        <always_on>true</always_on>
+        <update_rate>${update_rate}</update_rate>
+        <visualize>${visualize}</visualize>
+        <topic>${topic}</topic>
+        <gz_frame_id>${prefix}_laser_frame</gz_frame_id>
+        <frame_id>${prefix}_laser_frame</frame_id>
+
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>${HOKUYO_URG04LX_SAMPLE_COUNT}</samples>
+              <resolution>${HOKUYO_URG04LX_ANGULAR_RESOLUTION}</resolution>
+              <min_angle>${HOKUYO_URG04LX_FOV_MIN_RAD}</min_angle>
+              <max_angle>${HOKUYO_URG04LX_FOV_MAX_RAD}</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>${HOKUYO_URG04LX_RANGE_MIN}</min>
+            <max>${HOKUYO_URG04LX_RANGE_MAX}</max>
+            <resolution>${HOKUYO_URG04LX_RANGE_RESOLUTION}</resolution>
+          </range>
+          <noise>
+            <type>gaussian</type>
+            <mean>${HOKUYO_URG04LX_NOISE_MEAN}</mean>
+            <stddev>${HOKUYO_URG04LX_NOISE_STDDEV}</stddev>
+          </noise>
+        </lidar>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+</robot>

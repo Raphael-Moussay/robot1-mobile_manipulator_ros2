@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="robot1">
+  <!-- ====================================================================== -->
+  <!-- Modular URDF/Xacro Composition for Mobile Base Robot 1                 -->
+  <!-- ====================================================================== -->
+  <xacro:include filename="$(find robot1_description)/urdf/inertial_macros.xacro" />
+  <xacro:include filename="$(find robot1_description)/urdf/materials.xacro" />
+  <xacro:include filename="$(find robot1_description)/urdf/sensors/hokuyo_urg04lx.xacro" />
+  <xacro:include filename="$(find robot1_description)/urdf/robot1_core.xacro" />
+  <xacro:include filename="$(find robot1_description)/urdf/gazebo_control.xacro" />
+
+  <!-- ====================================================================== -->
+  <!-- Hokuyo URG-04LX 2D LiDAR Mounted Upside-Down Under the Cuboid Body     -->
+  <!--                                                                        -->
+  <!-- Chassis bottom face is at Z = 0.072 m above ground.                    -->
+  <!-- Mounting inverted (Roll = pi rad) places the 70 mm sensor cap 2 mm     -->
+  <!-- above the floor and the optical laser plane at Z = 0.017 m (17 mm),    -->
+  <!-- allowing direct 2D LiDAR detection of 20 mm tall Lego Duplo bricks.    -->
+  <!-- ====================================================================== -->
+  <xacro:property name="LIDAR_SCAN_TOPIC" value="/scan" />
+
+  <xacro:hokuyo_urg04lx
+    prefix="hokuyo"
+    parent="chassis_link"
+    inverted="true"
+    topic="${LIDAR_SCAN_TOPIC}">
+    <origin
+      xyz="${LIDAR_X_OFFSET} 0.0 ${-CHASSIS_HEIGHT / 2.0}"
+      rpy="${pi} 0.0 0.0" />
+  </xacro:hokuyo_urg04lx>
+</robot>
+

@@ -6,18 +6,20 @@ Developed for **ROS 2 Jazzy Jalisco** and **Gazebo Harmonic (`ros_gz_sim`)**.
 
 ---
 
-## 1. Package Overview: `robogames_arena_gazebo`
+## 1. Workspace Architecture
 
-The `robogames_arena_gazebo` package provides the simulation environment for the competition arena:
-- **Playing Surface**: 1.40 m (X) x 1.00 m (Y) static white plane centered at `(0, 0, 0)`.
-- **LiDAR Perimeter Walls**: 4 black walls (30 mm thickness, 150 mm height) designed for 2D LiDAR feature detection and Nav2 costmap configuration.
-- **Target Collection Box (Variant 2)**: Located in the top-right corner at `(X = +0.50 m, Y = +0.30 m)` rotated at 45° (`Yaw = -2.356 rad` facing the arena center). It features 3 front/side walls (100 mm height) and a rear rebound backboard (300 mm height).
-- **Dynamic Duplo Bricks**: 6 Lego Duplo bricks (`0.064 x 0.032 x 0.020 m`, mass `0.015 kg`, high friction) spawned randomly across the board using Python and `ros_gz_sim create`.
-- **Exclusion Zones**:
-  - Wall perimeter safety margin: 10 cm clearance.
-  - Robot starting area (bottom-left): $X < -0.35$ and $Y < -0.15$.
-  - Target collection box area (top-right): $X > 0.25$ and $Y > 0.05$.
-  - Inter-brick clearance: minimum 10 cm separation between any two bricks.
+Following standard ROS 2 separation of concerns, the workspace is organized into three decoupled packages:
+
+| Package | Role |
+| :--- | :--- |
+| **`robogames_arena_gazebo`** | Competition world (`1.40 m x 1.00 m`), 10 mm flush perimeter borders, 30 cm target zone arc, Onshape target collection box, and randomized spawning of 6 Lego Duplo bricks (`64 x 32 x 20 mm`). |
+| **`robot1_description`** | Hardware-agnostic modular URDF/Xacro model of Robot 1 (4-wheel rectangular cuboid base + upside-down **Hokuyo URG-04LX** 2D LiDAR mesh & Gazebo Harmonic `gpu_lidar` macro) and RViz2 configuration. |
+| **`robot1_bringup`** | End-to-end simulation launch orchestration, `ros_gz_bridge` YAML topic mapping (`/clock`, `/cmd_vel`, `/odom`, `/tf`, `/joint_states`, `/scan`), and interactive keyboard teleoperation (`keyboard_teleop`). |
+
+### Hokuyo URG-04LX Upside-Down Mounting Geometry
+According to official Hokuyo datasheet specifications (Drawing No. `C-40-3362`), the URG-04LX housing measures `50 x 50 x 70 mm` (`160 g`) with its optical scanning plane located `55 mm` from the base (`15 mm` from the top cap).
+- Because Lego Duplo bricks are only **`20 mm` tall**, an upright floor-level mount (`>= 57 mm`) would shoot above the bricks.
+- Mounting the URG-04LX **upside-down (`Roll = pi rad`) underneath the rectangular chassis** (`72 mm` ground clearance) places the sensor cap `2 mm` above the playing surface and positions the horizontal laser plane at **`17 mm` above the floor**, cleanly detecting all `20 mm` Duplo bricks across the arena while keeping `hokuyo_laser_frame` upright (`+Z` up, REP-103 compliant).
 
 ---
 
@@ -32,40 +34,40 @@ The `robogames_arena_gazebo` package provides the simulation environment for the
 
 ---
 
-## 3. Package Structure
+## 3. Repository Structure
 
 ```text
-src/robogames_arena_gazebo/
-├── launch/
-│   └── start_competition.launch.py   # Spawns world in Gazebo Sim & 6 randomized bricks
-├── models/
-│   ├── duplo_brick/
-│   │   ├── model.config               # Gazebo model configuration
-│   │   └── model.sdf                  # Dynamic brick SDF (15g, exact inertia tensor, friction)
-│   └── target_box/
-│       ├── meshes/
-│       │   ├── Box.mtl                # Material definition exported from Onshape
-│       │   └── Box.obj                # CAD 3D mesh exported from Onshape
-│       ├── model.config               # Gazebo target box model configuration
-│       └── model.sdf                  # Target box SDF with visual & collision mesh
-├── resource/
-│   └── robogames_arena_gazebo         # ament_python resource index marker
+src/
 ├── robogames_arena_gazebo/
-│   └── __init__.py                    # Python package module
-├── package.xml                        # Package manifest & dependencies
-├── setup.cfg                          # Installation script paths
-├── setup.py                           # Recursive asset installer (os.walk)
-└── worlds/
-    └── cleaner_arena.sdf              # SDF world with physics, sun, ground, arena & box
+│   ├── launch/start_competition.launch.py
+│   ├── models/
+│   │   ├── duplo_brick/
+│   │   └── target_box/
+│   └── worlds/cleaner_arena.sdf.xacro
+├── robot1_description/
+│   ├── launch/description.launch.py
+│   ├── meshes/sensors/hokuyo_urg04lx.{obj,mtl}
+│   ├── rviz/robot1_lidar_test.rviz
+│   └── urdf/
+│       ├── robot1.urdf.xacro
+│       ├── robot1_core.xacro
+│       ├── gazebo_control.xacro
+│       ├── inertial_macros.xacro
+│       ├── materials.xacro
+│       └── sensors/hokuyo_urg04lx.xacro
+└── robot1_bringup/
+    ├── config/ros_gz_bridge.yaml
+    ├── launch/
+    │   ├── sim_arena_teleop.launch.py
+    │   └── teleop_keyboard.launch.py
+    └── robot1_bringup/keyboard_teleop.py
 ```
 
 ---
 
-## 4. Prerequisites & Installation
+## 4. Prerequisites & Build Instructions
 
-### Install ROS 2 Jazzy & Gazebo Harmonic Packages
-
-Ensure ROS 2 Jazzy and the Gazebo Sim bridge dependencies are installed:
+Install ROS 2 Jazzy and Gazebo Harmonic dependencies:
 
 ```bash
 sudo apt update
@@ -73,75 +75,46 @@ sudo apt install -y \
   ros-jazzy-desktop \
   ros-jazzy-ros-gz-sim \
   ros-jazzy-ros-gz-bridge \
+  ros-jazzy-xacro \
+  ros-jazzy-teleop-twist-keyboard \
   python3-colcon-common-extensions
 ```
 
----
-
-## 5. Build Instructions
-
-Clone or open the repository, then build the workspace from the root directory:
+Build the workspace from the repository root:
 
 ```bash
-# 1. Navigate to the workspace root
 cd ~/Documents/Erasmus/robot1-mobile_manipulator_ros2
-
-# 2. Source the underlying ROS 2 Jazzy environment
 source /opt/ros/jazzy/setup.bash
-
-# 3. Resolve and verify package dependencies
-rosdep update
-rosdep install --from-paths src --ignore-src -r -y
-
-# 4. Build the robogames_arena_gazebo package
-colcon build --symlink-install --packages-select robogames_arena_gazebo
+colcon build --symlink-install
+source install/setup.bash
 ```
 
 ---
 
-## 6. How to Run the Simulation
+## 5. Running the Full Simulation & Keyboard Teleoperation
 
-After a successful build, source the local overlay and execute the launch file:
+### Terminal 1: Launch Arena + 6 Duplo Bricks + Robot 1 + LiDAR Bridge + RViz2
 
 ```bash
-# 1. Source the workspace overlay
-source install/setup.bash
-
-# 2. Launch the competition arena with randomized brick placement
-ros2 launch robogames_arena_gazebo start_competition.launch.py
-```
-
-### Expected Behavior
-1. Gazebo Harmonic starts automatically with physics running in real-time (`-r` mode).
-2. The white competition field and perimeter black walls appear centered at `(0, 0, 0)`.
-3. The target collection box is positioned in the upper-right corner at `(0.50, 0.30)`.
-4. Six bright red Duplo bricks (`brick_1` through `brick_6`) drop onto the field in random locations outside the exclusion zones.
-
----
-
-## 7. Useful Verification Commands
-
-While the simulation is running in a terminal, inspect Gazebo entities and ROS topics in another terminal:
-
-```bash
-# Source environment
 source /opt/ros/jazzy/setup.bash
 source install/setup.bash
-
-# List Gazebo models
-gz model --list
-
-# List active ROS 2 nodes
-ros2 node list
+ros2 launch robot1_bringup sim_arena_teleop.launch.py
 ```
 
----
+*(Optional: pass `use_rviz:=false` to disable automatic RViz2 startup.)*
 
-## 8. Next Development Steps
+### Terminal 2: Drive Robot 1 with the Keyboard
 
-As outlined in [`plan.md`](plan.md):
-- **Phase 1 (Sessions 1 to 3)**: Mobile base URDF/Xacro modeling, diff-drive controller, and LiDAR integration.
-- **Phase 2 (Sessions 4 to 6)**: 2D SLAM mapping using `slam_toolbox`.
-- **Phase 3 (Sessions 7 to 9)**: Nav2 stack integration (costmaps, AMCL, waypoints).
-- **Phase 4 (Sessions 10 to 11)**: Arm manipulation and full competition mission execution.
+Run the dedicated arena-tuned keyboard teleoperation node (supports **Arrow keys**, French **AZERTY `Z/Q/S/D`**, and **QWERTY `W/A/S/D`**, plus `Space` to stop and `+`/`-` to adjust speed):
 
+```bash
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+ros2 run robot1_bringup keyboard_teleop
+```
+
+Alternatively, standard `teleop_twist_keyboard` is also directly compatible:
+
+```bash
+ros2 run teleop_twist_keyboard teleop_twist_keyboard
+```

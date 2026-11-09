@@ -26,6 +26,7 @@ from launch_ros.actions import Node
 # Package Names
 BRINGUP_PACKAGE_NAME: str = "robot1_bringup"
 DESCRIPTION_PACKAGE_NAME: str = "robot1_description"
+ARM_DESCRIPTION_PACKAGE_NAME: str = "myrobot_description"
 ARENA_PACKAGE_NAME: str = "robogames_arena_gazebo"
 
 # Relative Asset Paths
@@ -59,6 +60,9 @@ def generate_launch_description() -> LaunchDescription:
     """
     bringup_share_dir: str = get_package_share_directory(BRINGUP_PACKAGE_NAME)
     description_share_dir: str = get_package_share_directory(DESCRIPTION_PACKAGE_NAME)
+    arm_description_share_dir: str = get_package_share_directory(
+        ARM_DESCRIPTION_PACKAGE_NAME
+    )
     arena_share_dir: str = get_package_share_directory(ARENA_PACKAGE_NAME)
 
     declare_use_rviz = DeclareLaunchArgument(
@@ -75,12 +79,17 @@ def generate_launch_description() -> LaunchDescription:
     use_rviz_config = LaunchConfiguration(USE_RVIZ_ARG)
     use_sim_time_config = LaunchConfiguration(USE_SIM_TIME_ARG)
 
-    # 1. Expose robot1_description parent share directory so Gazebo resolves
-    #    package://robot1_description/meshes/sensors/hokuyo_urg04lx.obj
+    # 1. Expose robot1_description and myrobot_description parent share directories
+    #    so Gazebo resolves package:// meshes for both the Hokuyo LiDAR and the 5-DOF arm
     description_parent_share_dir: str = os.path.dirname(description_share_dir)
+    arm_parent_share_dir: str = os.path.dirname(arm_description_share_dir)
     gz_resource_env_robot = AppendEnvironmentVariable(
         name="GZ_SIM_RESOURCE_PATH",
         value=description_parent_share_dir,
+    )
+    gz_resource_env_arm = AppendEnvironmentVariable(
+        name="GZ_SIM_RESOURCE_PATH",
+        value=arm_parent_share_dir,
     )
 
     # 2. Launch Robogames arena world + 6 randomized Duplo bricks
@@ -152,6 +161,7 @@ def generate_launch_description() -> LaunchDescription:
             declare_use_rviz,
             declare_use_sim_time,
             gz_resource_env_robot,
+            gz_resource_env_arm,
             arena_simulation,
             robot_description_launch,
             spawn_robot_node,

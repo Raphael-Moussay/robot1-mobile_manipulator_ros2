@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
   <!-- ====================================================================== -->
-  <!-- Gazebo Harmonic 4-Wheel Skid-Steer Differential Drive Constants        -->
+  <!-- Gazebo Harmonic 4-Wheel Skid-Steer & 5-DOF Arm Controller Constants    -->
   <!-- ====================================================================== -->
   <xacro:property name="ODOM_PUBLISH_RATE_HZ" value="50" />
   <xacro:property name="DIFF_DRIVE_MAX_LINEAR_VEL" value="0.80" />
@@ -15,6 +15,32 @@
   <xacro:property name="JOINT_STATES_TOPIC" value="/joint_states" />
   <xacro:property name="ODOM_FRAME_ID" value="odom" />
   <xacro:property name="BASE_CHILD_FRAME_ID" value="base_footprint" />
+
+  <!-- Manipulator Arm PID Position Controller Gains -->
+  <xacro:property name="ARM_JOINT_KP" value="25.0" />
+  <xacro:property name="ARM_JOINT_KI" value="0.5" />
+  <xacro:property name="ARM_JOINT_KD" value="1.5" />
+  <xacro:property name="ARM_JOINT_I_MAX" value="1.0" />
+  <xacro:property name="ARM_JOINT_EFFORT_MAX" value="12.0" />
+  <xacro:property name="ARM_HOME_POSITION_RAD" value="0.0" />
+
+  <!-- Reusable Gazebo Harmonic Joint Position Controller Macro -->
+  <xacro:macro name="arm_joint_position_controller" params="joint_name cmd_topic">
+    <plugin
+      filename="gz-sim-joint-position-controller-system"
+      name="gz::sim::systems::JointPositionController">
+      <joint_name>${joint_name}</joint_name>
+      <topic>${cmd_topic}</topic>
+      <p_gain>${ARM_JOINT_KP}</p_gain>
+      <i_gain>${ARM_JOINT_KI}</i_gain>
+      <d_gain>${ARM_JOINT_KD}</d_gain>
+      <i_max>${ARM_JOINT_I_MAX}</i_max>
+      <i_min>${-ARM_JOINT_I_MAX}</i_min>
+      <cmd_max>${ARM_JOINT_EFFORT_MAX}</cmd_max>
+      <cmd_min>${-ARM_JOINT_EFFORT_MAX}</cmd_min>
+      <initial_position>${ARM_HOME_POSITION_RAD}</initial_position>
+    </plugin>
+  </xacro:macro>
 
   <!-- ====================================================================== -->
   <!-- Gazebo Harmonic System Plugins                                         -->
@@ -49,7 +75,7 @@
       <child_frame_id>${BASE_CHILD_FRAME_ID}</child_frame_id>
     </plugin>
 
-    <!-- Wheel Joint State Publisher for RViz2 / robot_state_publisher -->
+    <!-- Joint State Publisher for 4 Drive Wheels + 5 Manipulator Arm Joints -->
     <plugin
       filename="gz-sim-joint-state-publisher-system"
       name="gz::sim::systems::JointStatePublisher">
@@ -58,7 +84,18 @@
       <joint_name>rear_left_wheel_joint</joint_name>
       <joint_name>front_right_wheel_joint</joint_name>
       <joint_name>rear_right_wheel_joint</joint_name>
+      <joint_name>Joint1</joint_name>
+      <joint_name>Joint2</joint_name>
+      <joint_name>Joint3</joint_name>
+      <joint_name>Joint4</joint_name>
+      <joint_name>Joint5</joint_name>
     </plugin>
+
+    <!-- Position Controllers holding the 5-DOF Manipulator Arm against Gravity -->
+    <xacro:arm_joint_position_controller joint_name="Joint1" cmd_topic="/arm/joint1/cmd_pos" />
+    <xacro:arm_joint_position_controller joint_name="Joint2" cmd_topic="/arm/joint2/cmd_pos" />
+    <xacro:arm_joint_position_controller joint_name="Joint3" cmd_topic="/arm/joint3/cmd_pos" />
+    <xacro:arm_joint_position_controller joint_name="Joint4" cmd_topic="/arm/joint4/cmd_pos" />
+    <xacro:arm_joint_position_controller joint_name="Joint5" cmd_topic="/arm/joint5/cmd_pos" />
   </gazebo>
 </robot>
-

@@ -77,13 +77,15 @@ sudo apt install -y \
   ros-jazzy-ros-gz-bridge \
   ros-jazzy-xacro \
   ros-jazzy-teleop-twist-keyboard \
-  python3-colcon-common-extensions
+  python3-colcon-common-extensions \
+  python3-vcstool
 ```
 
-Build the workspace from the repository root:
+Import external repositories (`my_robot_arm_ros2`) and build the workspace from the repository root:
 
 ```bash
 cd ~/Documents/Erasmus/robot1-mobile_manipulator_ros2
+vcs import . < dependencies.repos
 source /opt/ros/jazzy/setup.bash
 colcon build --symlink-install
 source install/setup.bash

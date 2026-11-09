@@ -30,6 +30,17 @@ EXPECTED_WHEEL_JOINTS: Tuple[str, ...] = (
     "front_right_wheel_joint",
     "rear_right_wheel_joint",
 )
+EXPECTED_ARM_JOINTS: Tuple[str, ...] = (
+    "Joint1",
+    "Joint2",
+    "Joint3",
+    "Joint4",
+    "Joint5",
+)
+EXPECTED_ALL_PUBLISHED_JOINTS: Tuple[str, ...] = (
+    EXPECTED_WHEEL_JOINTS + EXPECTED_ARM_JOINTS
+)
+EXPECTED_ARM_MOUNT_X_M: float = 0.060
 
 
 def evaluate_xacro_properties(xacro_paths: List[Path]) -> Dict[str, object]:
@@ -164,14 +175,26 @@ class TestRobot1UrdfGeometry(unittest.TestCase):
             math.pi + optical_roll_comp, 0.0, delta=FLOAT_TOLERANCE
         )
 
-    def test_gazebo_diff_drive_references_all_four_wheels(self) -> None:
-        """Verify Gazebo DiffDrive and JointStatePublisher configure all 4 wheels."""
+        # Verify top-front manipulator arm base sits inside front half of chassis
+        arm_mount_x = float(props["ARM_MOUNT_X_OFFSET"])
+        arm_base_radius = float(props["ARM_BASE_RADIUS"])
+        chassis_half_length = float(props["CHASSIS_LENGTH"]) / 2.0
+        self.assertAlmostEqual(
+            arm_mount_x, EXPECTED_ARM_MOUNT_X_M, delta=FLOAT_TOLERANCE
+        )
+        self.assertLessEqual(arm_mount_x + arm_base_radius, chassis_half_length)
+
+    def test_gazebo_diff_drive_and_arm_joints_configured(self) -> None:
+        """Verify Gazebo DiffDrive, JointStatePublisher, and 5-DOF arm controllers."""
         control_tree = ET.parse(URDF_DIR / "gazebo_control.xacro")
         root = control_tree.getroot()
 
         left_joints = [e.text for e in root.findall(".//left_joint")]
         right_joints = [e.text for e in root.findall(".//right_joint")]
-        published_joints = [e.text for e in root.findall(".//joint_name")]
+        published_joints = [
+            e.text
+            for e in root.findall(".//plugin[@filename='gz-sim-joint-state-publisher-system']/joint_name")
+        ]
 
         self.assertEqual(
             left_joints, ["front_left_wheel_joint", "rear_left_wheel_joint"]
@@ -179,7 +202,7 @@ class TestRobot1UrdfGeometry(unittest.TestCase):
         self.assertEqual(
             right_joints, ["front_right_wheel_joint", "rear_right_wheel_joint"]
         )
-        self.assertEqual(tuple(published_joints), EXPECTED_WHEEL_JOINTS)
+        self.assertEqual(tuple(published_joints), EXPECTED_ALL_PUBLISHED_JOINTS)
 
 
 if __name__ == "__main__":

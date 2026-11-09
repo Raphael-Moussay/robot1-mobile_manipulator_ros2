@@ -11,7 +11,7 @@
   <xacro:property name="CHASSIS_LENGTH" value="0.250" />
   <xacro:property name="CHASSIS_WIDTH" value="0.160" />
   <xacro:property name="CHASSIS_HEIGHT" value="0.050" />
-  <xacro:property name="CHASSIS_MASS" value="2.000" />
+  <xacro:property name="CHASSIS_MASS" value="2.500" />
 
   <!-- Chassis sits right above the 70mm upside-down Hokuyo URG-04LX -->
   <xacro:property
@@ -33,10 +33,15 @@
   <xacro:property name="FRONT_AXLE_X" value="0.035" />
   <xacro:property name="REAR_AXLE_X" value="-0.090" />
 
-  <!-- Center of mass aligned with midpoint between front and rear axles -->
+  <!-- Rear battery counterweight offset balancing the 1.10 kg front-mounted arm -->
+  <xacro:property name="CHASSIS_COM_X_OFFSET" value="-0.075" />
+
+  <!-- Top-Front Manipulator Arm Mounting Geometry (120 mm circular base) -->
+  <xacro:property name="ARM_BASE_RADIUS" value="0.060" />
+  <xacro:property name="ARM_FRONT_INSET" value="0.005" />
   <xacro:property
-    name="CHASSIS_COM_X_OFFSET"
-    value="${(FRONT_AXLE_X + REAR_AXLE_X) / 2.0}" />
+    name="ARM_MOUNT_X_OFFSET"
+    value="${CHASSIS_LENGTH / 2.0 - ARM_BASE_RADIUS - ARM_FRONT_INSET}" />
 
   <!-- Axle Mount Bracket Dimensions (connecting chassis underside to axles) -->
   <xacro:property name="MOUNT_LENGTH" value="0.026" />

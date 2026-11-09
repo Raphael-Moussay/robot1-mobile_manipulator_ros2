@@ -1,13 +1,28 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="robot1">
   <!-- ====================================================================== -->
-  <!-- Modular URDF/Xacro Composition for Mobile Base Robot 1                 -->
+  <!-- Modular URDF/Xacro Composition for Mobile Manipulator Robot 1          -->
   <!-- ====================================================================== -->
   <xacro:include filename="$(find robot1_description)/urdf/inertial_macros.xacro" />
   <xacro:include filename="$(find robot1_description)/urdf/materials.xacro" />
   <xacro:include filename="$(find robot1_description)/urdf/sensors/hokuyo_urg04lx.xacro" />
+  <xacro:include filename="$(find myrobot_description)/urdf/myrobot_geometry.urdf.xacro" />
   <xacro:include filename="$(find robot1_description)/urdf/robot1_core.xacro" />
   <xacro:include filename="$(find robot1_description)/urdf/gazebo_control.xacro" />
+
+  <!-- ====================================================================== -->
+  <!-- 5-DOF Manipulator Arm Mounted on Top of the Front of the Cuboid Body   -->
+  <!--                                                                        -->
+  <!-- The 120 mm diameter arm base sits flush on the top face (+0.025 m)     -->
+  <!-- of chassis_link at the front (X = +0.060 m, 5 mm inset from front).    -->
+  <!-- ====================================================================== -->
+  <xacro:myrobot_arm
+    base_link_name="arm_base_link"
+    parent="chassis_link">
+    <origin
+      xyz="${ARM_MOUNT_X_OFFSET} 0.0 ${CHASSIS_HEIGHT / 2.0}"
+      rpy="0.0 0.0 0.0" />
+  </xacro:myrobot_arm>
 
   <!-- ====================================================================== -->
   <!-- Hokuyo URG-04LX 2D LiDAR Mounted Upside-Down Under the Cuboid Body     -->
@@ -29,4 +44,3 @@
       rpy="${pi} 0.0 0.0" />
   </xacro:hokuyo_urg04lx>
 </robot>
-

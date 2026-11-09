@@ -1,0 +1,9 @@
+# External ROS 2 repository dependencies managed via vcstool
+# Usage from workspace root:
+#   vcs import . < dependencies.repos
+#   vcs pull src/external
+repositories:
+  src/external/my_robot_arm_ros2:
+    type: git
+    url: https://github.com/Raphael-Moussay/my_robot_arm_ros2.git
+    version: main

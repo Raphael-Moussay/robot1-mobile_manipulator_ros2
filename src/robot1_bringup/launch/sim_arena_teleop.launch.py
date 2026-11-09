@@ -1,12 +1,14 @@
 """Complete simulation bringup launch file for Robot 1 in the Robogames arena.
 
 This launch file orchestrates:
-1. Gazebo resource path registration for `robot1_description` 3D meshes.
+1. Gazebo resource path registration for `robot1_description` and `myrobot_description` meshes.
 2. Inclusion of `robogames_arena_gazebo` (world + target box + 6 Duplo bricks).
 3. Inclusion of `robot1_description` (`robot_state_publisher`).
 4. Spawning `robot1` inside the bottom-left robot starting zone.
-5. Starting `ros_gz_bridge` (`/clock`, `/cmd_vel`, `/odom`, `/tf`, `/joint_states`, `/scan`).
-6. Optional `rviz2` visualization pre-configured for Hokuyo URG-04LX Duplo detection.
+5. Starting `ros_gz_bridge` (`/clock`, `/cmd_vel`, `/odom`, `/tf`, `/joint_states`, `/scan_raw`).
+6. Starting `laser_self_filter` (`/scan_raw` -> wheel-filtered `/scan`).
+7. Starting mapless Nav2 (`navigation.launch.py`, enabled by default via `use_nav2:=true`).
+8. Starting `rviz2` pre-configured with `2D Goal Pose` (`/goal_pose`), `/scan`, and `/plan`.
 """
 
 import os
@@ -32,6 +34,7 @@ ARENA_PACKAGE_NAME: str = "robogames_arena_gazebo"
 # Relative Asset Paths
 ARENA_LAUNCH_REL_PATH: str = os.path.join("launch", "start_competition.launch.py")
 DESCRIPTION_LAUNCH_REL_PATH: str = os.path.join("launch", "description.launch.py")
+NAVIGATION_LAUNCH_REL_PATH: str = os.path.join("launch", "navigation.launch.py")
 BRIDGE_CONFIG_REL_PATH: str = os.path.join("config", "ros_gz_bridge.yaml")
 RVIZ_CONFIG_REL_PATH: str = os.path.join("rviz", "robot1_lidar_test.rviz")
 
@@ -47,16 +50,18 @@ ROBOT_SPAWN_YAW_RAD: float = 0.62
 # Launch Argument Constants
 USE_RVIZ_ARG: str = "use_rviz"
 DEFAULT_USE_RVIZ: str = "true"
+USE_NAV2_ARG: str = "use_nav2"
+DEFAULT_USE_NAV2: str = "true"
 USE_SIM_TIME_ARG: str = "use_sim_time"
 DEFAULT_USE_SIM_TIME: str = "true"
 
 
 def generate_launch_description() -> LaunchDescription:
-    """Assemble the full Gazebo Harmonic + ROS 2 Jazzy simulation stack.
+    """Assemble the full Gazebo Harmonic + ROS 2 Jazzy + Nav2 simulation stack.
 
     Returns:
         Configured LaunchDescription launching the arena, robot, ROS-Gazebo
-        topic bridge, and RViz2 LiDAR visualization.
+        topic bridge, LiDAR wheel self-filter, mapless Nav2, and RViz2.
     """
     bringup_share_dir: str = get_package_share_directory(BRINGUP_PACKAGE_NAME)
     description_share_dir: str = get_package_share_directory(DESCRIPTION_PACKAGE_NAME)
@@ -68,7 +73,12 @@ def generate_launch_description() -> LaunchDescription:
     declare_use_rviz = DeclareLaunchArgument(
         name=USE_RVIZ_ARG,
         default_value=DEFAULT_USE_RVIZ,
-        description="Launch RViz2 with the Hokuyo URG-04LX LaserScan view if true.",
+        description="Launch RViz2 with 2D Goal Pose and Hokuyo LaserScan view if true.",
+    )
+    declare_use_nav2 = DeclareLaunchArgument(
+        name=USE_NAV2_ARG,
+        default_value=DEFAULT_USE_NAV2,
+        description="Launch mapless Nav2 autonomous navigation stack if true.",
     )
     declare_use_sim_time = DeclareLaunchArgument(
         name=USE_SIM_TIME_ARG,
@@ -77,6 +87,7 @@ def generate_launch_description() -> LaunchDescription:
     )
 
     use_rviz_config = LaunchConfiguration(USE_RVIZ_ARG)
+    use_nav2_config = LaunchConfiguration(USE_NAV2_ARG)
     use_sim_time_config = LaunchConfiguration(USE_SIM_TIME_ARG)
 
     # 1. Expose robot1_description and myrobot_description parent share directories
@@ -144,7 +155,26 @@ def generate_launch_description() -> LaunchDescription:
         ],
     )
 
-    # 6. RViz2 visualization showing RobotModel, TF, and Hokuyo /scan hits
+    # 6. Filter out front-wheel self-detections from /scan_raw into /scan
+    laser_self_filter_node = Node(
+        package=BRINGUP_PACKAGE_NAME,
+        executable="laser_self_filter",
+        name="laser_self_filter",
+        output="screen",
+        parameters=[{"use_sim_time": use_sim_time_config}],
+    )
+
+    # 7. Mapless Nav2 stack (click-to-go in RViz2 without static arena boundary map)
+    navigation_launch_path: str = os.path.join(
+        bringup_share_dir, NAVIGATION_LAUNCH_REL_PATH
+    )
+    navigation_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(navigation_launch_path),
+        launch_arguments={USE_SIM_TIME_ARG: use_sim_time_config}.items(),
+        condition=IfCondition(use_nav2_config),
+    )
+
+    # 8. RViz2 visualization showing RobotModel, TF, Hokuyo /scan, and Nav2 /plan
     rviz_config_path: str = os.path.join(description_share_dir, RVIZ_CONFIG_REL_PATH)
     rviz2_node = Node(
         package="rviz2",
@@ -159,6 +189,7 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription(
         [
             declare_use_rviz,
+            declare_use_nav2,
             declare_use_sim_time,
             gz_resource_env_robot,
             gz_resource_env_arm,
@@ -166,7 +197,8 @@ def generate_launch_description() -> LaunchDescription:
             robot_description_launch,
             spawn_robot_node,
             ros_gz_bridge_node,
+            laser_self_filter_node,
+            navigation_launch,
             rviz2_node,
         ]
     )
-

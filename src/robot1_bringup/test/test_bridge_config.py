@@ -14,6 +14,7 @@ import yaml
 PACKAGE_ROOT: Path = Path(__file__).resolve().parents[1]
 WORKSPACE_SRC_ROOT: Path = PACKAGE_ROOT.parent
 BRIDGE_YAML_PATH: Path = PACKAGE_ROOT / "config" / "ros_gz_bridge.yaml"
+NAV2_YAML_PATH: Path = PACKAGE_ROOT / "config" / "nav2_params.yaml"
 ARENA_WORLD_SDF_PATH: Path = (
     WORKSPACE_SRC_ROOT
     / "robogames_arena_gazebo"
@@ -22,6 +23,9 @@ ARENA_WORLD_SDF_PATH: Path = (
 )
 TELEOP_MODULE_PATH: Path = (
     PACKAGE_ROOT / "robot1_bringup" / "keyboard_teleop.py"
+)
+SELF_FILTER_MODULE_PATH: Path = (
+    PACKAGE_ROOT / "robot1_bringup" / "laser_self_filter.py"
 )
 
 EXPECTED_BRIDGED_TOPICS: Dict[str, Tuple[str, str, str]] = {
@@ -34,7 +38,7 @@ EXPECTED_BRIDGED_TOPICS: Dict[str, Tuple[str, str, str]] = {
         "gz.msgs.Model",
         "GZ_TO_ROS",
     ),
-    "/scan": (
+    "/scan_raw": (
         "sensor_msgs/msg/LaserScan",
         "gz.msgs.LaserScan",
         "GZ_TO_ROS",
@@ -202,6 +206,82 @@ class TestRobot1Bringup(unittest.TestCase):
         self.assertEqual(bindings["d"].angular_sign, -1.0)
         self.assertGreater(
             teleop.DEADMAN_WATCHDOG_TIMEOUT_SEC, MIN_OS_AUTOREPEAT_DELAY_SEC
+        )
+
+    def test_laser_self_filter_removes_front_wheels_and_keeps_duplos(self) -> None:
+        """Verify front wheel hits are replaced by NaN while external Duplo hits remain intact."""
+        saved_modules: Dict[str, Optional[types.ModuleType]] = {}
+        stub_names = (
+            "rclpy",
+            "rclpy.node",
+            "rclpy.qos",
+            "sensor_msgs",
+            "sensor_msgs.msg",
+        )
+        for mod_name in stub_names:
+            saved_modules[mod_name] = sys.modules.get(mod_name)
+
+        try:
+            rclpy_stub = types.ModuleType("rclpy")
+            rclpy_node_stub = types.ModuleType("rclpy.node")
+            rclpy_qos_stub = types.ModuleType("rclpy.qos")
+            sensor_pkg = types.ModuleType("sensor_msgs")
+            sensor_msg = types.ModuleType("sensor_msgs.msg")
+
+            rclpy_node_stub.Node = object  # type: ignore[attr-defined]
+            rclpy_qos_stub.DurabilityPolicy = object  # type: ignore[attr-defined]
+            rclpy_qos_stub.QoSProfile = object  # type: ignore[attr-defined]
+            rclpy_qos_stub.ReliabilityPolicy = object  # type: ignore[attr-defined]
+            rclpy_qos_stub.qos_profile_sensor_data = object()  # type: ignore[attr-defined]
+            sensor_msg.LaserScan = object  # type: ignore[attr-defined]
+
+            sys.modules["rclpy"] = rclpy_stub
+            sys.modules["rclpy.node"] = rclpy_node_stub
+            sys.modules["rclpy.qos"] = rclpy_qos_stub
+            sys.modules["sensor_msgs"] = sensor_pkg
+            sys.modules["sensor_msgs.msg"] = sensor_msg
+
+            spec = importlib.util.spec_from_file_location(
+                "laser_self_filter_under_test", SELF_FILTER_MODULE_PATH
+            )
+            assert spec is not None and spec.loader is not None
+            self_filter = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(self_filter)
+        finally:
+            for mod_name, original in saved_modules.items():
+                if original is None:
+                    sys.modules.pop(mod_name, None)
+                else:
+                    sys.modules[mod_name] = original
+
+        # Ray at +112 deg (1.954 rad) hitting left front wheel at r = 0.095 m
+        self.assertTrue(
+            self_filter.is_point_inside_robot_footprint(0.095, 1.954, 0.05, 4.0)
+        )
+        # Ray at 0 deg hitting a Duplo brick 6 cm ahead of LiDAR (X_base = +0.158 m)
+        self.assertFalse(
+            self_filter.is_point_inside_robot_footprint(0.060, 0.0, 0.05, 4.0)
+        )
+
+        filtered = self_filter.filter_scan_ranges(
+            [0.095, 0.250], 1.954, -1.954, 0.05, 4.0
+        )
+        self.assertTrue(math.isnan(filtered[0]))
+        self.assertAlmostEqual(filtered[1], 0.250)
+
+    def test_mapless_nav2_params_configuration(self) -> None:
+        """Ensure nav2_params.yaml configures mapless rolling-window navigation in odom."""
+        nav2_cfg = yaml.safe_load(NAV2_YAML_PATH.read_text(encoding="utf-8"))
+        local_cm = nav2_cfg["local_costmap"]["local_costmap"]["ros__parameters"]
+        global_cm = nav2_cfg["global_costmap"]["global_costmap"]["ros__parameters"]
+
+        self.assertTrue(local_cm["rolling_window"])
+        self.assertTrue(global_cm["rolling_window"])
+        self.assertEqual(local_cm["global_frame"], "odom")
+        self.assertEqual(global_cm["global_frame"], "odom")
+        self.assertNotIn("static_layer", global_cm["plugins"])
+        self.assertFalse(
+            nav2_cfg["controller_server"]["ros__parameters"]["enable_stamped_cmd_vel"]
         )
 
 

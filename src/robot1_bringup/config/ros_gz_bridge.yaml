@@ -37,9 +37,9 @@
   gz_type_name: "gz.msgs.Model"
   direction: GZ_TO_ROS
 
-# Hokuyo URG-04LX 2D LiDAR laser scan
-- ros_topic_name: "/scan"
-  gz_topic_name: "/scan"
+# Raw Hokuyo URG-04LX 2D LiDAR laser scan (filtered into /scan by laser_self_filter)
+- ros_topic_name: "/scan_raw"
+  gz_topic_name: "/scan_raw"
   ros_type_name: "sensor_msgs/msg/LaserScan"
   gz_type_name: "gz.msgs.LaserScan"
   direction: GZ_TO_ROS

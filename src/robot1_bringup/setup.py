@@ -64,6 +64,7 @@ setup(
     entry_points={
         "console_scripts": [
             "keyboard_teleop = robot1_bringup.keyboard_teleop:main",
+            "laser_self_filter = robot1_bringup.laser_self_filter:main",
         ],
     },
 )

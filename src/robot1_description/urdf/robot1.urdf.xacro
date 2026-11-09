@@ -32,7 +32,7 @@
   <!-- above the floor and the optical laser plane at Z = 0.017 m (17 mm),    -->
   <!-- allowing direct 2D LiDAR detection of 20 mm tall Lego Duplo bricks.    -->
   <!-- ====================================================================== -->
-  <xacro:property name="LIDAR_SCAN_TOPIC" value="/scan" />
+  <xacro:property name="LIDAR_SCAN_TOPIC" value="/scan_raw" />
 
   <xacro:hokuyo_urg04lx
     prefix="hokuyo"
